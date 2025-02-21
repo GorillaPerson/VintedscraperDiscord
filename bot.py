@@ -3,31 +3,59 @@ import requests
 from bs4 import BeautifulSoup
 import os
 import asyncio
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
 
 TOKEN = os.getenv("DISCORD_TOKEN")
-VINTED_URL = "https://www.vinted.com/catalog?order=newest_first&time=1740164528"
+VINTED_URL = "https://www.vinted.com/catalog?order=newest_first"
 
 intents = discord.Intents.default()
-intents.message_content = True  # Needed for message commands
+intents.message_content = True  # Enable message content intent for commands
 client = discord.Client(intents=intents)
 
 last_posted = None
 
-async def fetch_latest_item():
-    """Fetches the latest item from Vinted"""
+def fetch_latest_item():
+    """Fetches the latest item from Vinted using requests, then Selenium if needed"""
     try:
-        response = requests.get(VINTED_URL)
+        response = requests.get(VINTED_URL, timeout=10)
         soup = BeautifulSoup(response.text, "html.parser")
+        item = soup.find("div", class_="feed-grid__item")  
 
-        item = soup.find("div", class_="feed-grid__item")  # Adjust selector if needed
         if item:
             link = item.find("a")["href"]
             title = item.find("h2").text.strip()
             price = item.find("span", class_="price").text.strip()
             return title, price, f"https://www.vinted.com{link}"
-        return None
+
+        print("Requests method failed, trying Selenium...")
+
     except Exception as e:
-        return f"Error: {str(e)}"
+        print(f"Requests scraping failed: {e}")
+
+    # Fallback to Selenium
+    try:
+        options = Options()
+        options.add_argument("--headless")  
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")
+
+        driver = webdriver.Chrome(options=options)
+        driver.get(VINTED_URL)
+        soup = BeautifulSoup(driver.page_source, "html.parser")
+        driver.quit()
+
+        item = soup.find("div", class_="feed-grid__item")  
+        if item:
+            link = item.find("a")["href"]
+            title = item.find("h2").text.strip()
+            price = item.find("span", class_="price").text.strip()
+            return title, price, f"https://www.vinted.com{link}"
+
+    except Exception as e:
+        return f"Error fetching data: {e}"
+
+    return "No items found"
 
 async def check_vinted():
     """Automatically checks for new listings"""
@@ -36,13 +64,13 @@ async def check_vinted():
     channel = client.get_channel(1342574387492294708)  # Replace with your channel ID
 
     while not client.is_closed():
-        latest_item = await fetch_latest_item()
+        latest_item = fetch_latest_item()
         if latest_item and isinstance(latest_item, tuple):
             title, price, link = latest_item
             if link != last_posted:
                 last_posted = link
                 await channel.send(f"**{title}**\n💰 {price}\n🔗 {link}")
-        elif isinstance(latest_item, str):  # If an error occurred
+        elif isinstance(latest_item, str):  
             await channel.send(f"⚠️ Error fetching data: {latest_item}")
 
         await asyncio.sleep(60)  # Check every 60 seconds
@@ -58,7 +86,7 @@ async def on_message(message):
         return
 
     if message.content.lower() == "!latest":
-        latest_item = await fetch_latest_item()
+        latest_item = fetch_latest_item()
         if latest_item and isinstance(latest_item, tuple):
             title, price, link = latest_item
             await message.channel.send(f"**{title}**\n💰 {price}\n🔗 {link}")
