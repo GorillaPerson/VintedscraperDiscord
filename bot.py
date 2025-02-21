@@ -5,7 +5,7 @@ import os
 import asyncio
 
 TOKEN = os.getenv("DISCORD_TOKEN")
-VINTED_URL = "https://www.vinted.com/vetements?order=newest_first"
+VINTED_URL = "https://www.vinted.com/catalog?order=newest_first&time=1740164528"
 
 intents = discord.Intents.default()
 client = discord.Client(intents=intents)
