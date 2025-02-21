@@ -36,11 +36,12 @@ def fetch_latest_item():
     # Fallback to Selenium
     try:
         options = Options()
+        options.binary_location = os.getenv("GOOGLE_CHROME_BIN", "/usr/bin/google-chrome")  # Set Chrome binary path
         options.add_argument("--headless")  
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
 
-        driver = webdriver.Chrome(options=options)
+        driver = webdriver.Chrome(executable_path=os.getenv("CHROMEDRIVER_PATH", "/usr/bin/chromedriver"), options=options)
         driver.get(VINTED_URL)
         soup = BeautifulSoup(driver.page_source, "html.parser")
         driver.quit()
