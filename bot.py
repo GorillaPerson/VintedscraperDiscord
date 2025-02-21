@@ -15,7 +15,7 @@ last_posted = None
 async def check_vinted():
     global last_posted
     await client.wait_until_ready()
-    channel = client.get_channel(YOUR_CHANNEL_ID)  # Replace with your channel ID
+    channel = client.get_channel(1342574387492294708)  # Replace with your channel ID
 
     while not client.is_closed():
         response = requests.get(VINTED_URL)
